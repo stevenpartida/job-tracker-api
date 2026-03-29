@@ -26,7 +26,6 @@ export async function GET(
 }
 
 // PATCH /api/companies/:id
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } },

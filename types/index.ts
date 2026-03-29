@@ -60,15 +60,15 @@ export type Application = {
 export type CreateApplicationInput = {
   referralContactId?: string;
   roleTitle: string;
-  jobUrl: string;
+  jobUrl?: string;
   techStack?: string[];
-  workModel: ApplicationWorkModel;
-  status: ApplicationStatus;
+  workModel?: ApplicationWorkModel;
+  status?: ApplicationStatus;
   dateFound?: string;
   dateApplied?: string;
   salaryMin?: number;
   salaryMax?: number;
-  priority: ApplicationPriority;
+  priority?: ApplicationPriority;
   notes?: string;
 };
 
@@ -92,7 +92,7 @@ export type CreateContactInput = {
   role?: string;
   email?: string;
   linkedInUrl?: string;
-  connectionType: ConnectionType;
+  connectionType?: ConnectionType;
   lastContact?: string;
   followUpDate?: string;
   notes?: string;
