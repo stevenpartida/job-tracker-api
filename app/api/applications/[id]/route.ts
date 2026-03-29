@@ -4,7 +4,7 @@ import { applications } from "@/lib/memory";
 // PATCH /api/companies/:id
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const body = await request.json();
