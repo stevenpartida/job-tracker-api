@@ -247,7 +247,7 @@ src/
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/job-tracker-api.git
+git clone https://github.com/stevenpartida/job-tracker-api.git
 cd job-tracker-api
 
 # Install dependencies
