@@ -1,4 +1,4 @@
-import { companies, applications, contacts } from "@/lib/memory";
+import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/companies/:id
@@ -7,8 +7,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
+  const company = await prisma.company.findUnique({ where: { id } });
+
+  if (!company) {
     return NextResponse.json(
       {
         error: {
@@ -21,7 +22,6 @@ export async function GET(
     );
   }
 
-  const company = companies[index];
   return NextResponse.json({ data: company }, { status: 200 });
 }
 
@@ -32,21 +32,6 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await request.json();
-
-  // Validate: company exists
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
-    return NextResponse.json(
-      {
-        error: {
-          message: `Company with id: ${id} was not found`,
-          code: "NOT_FOUND",
-          status: 404,
-        },
-      },
-      { status: 404 },
-    );
-  }
 
   // Validate: body is not empty
   if (Object.keys(body).length === 0) {
@@ -62,31 +47,10 @@ export async function PATCH(
     );
   }
 
-  // Update: spread existing, apply changes, protect server fields
-  const company = companies[index];
-  const updatedCompany = {
-    ...company,
-    ...body,
-    id: company.id,
-    createdAt: company.createdAt,
-    updatedAt: new Date().toISOString(),
-  };
-
-  companies[index] = updatedCompany;
-
-  return NextResponse.json({ data: updatedCompany }, { status: 200 });
-}
-
-// DELETE /api/companies/:id
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+  const company = await prisma.company.findUnique({ where: { id } });
 
   // Validate: company exists
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
+  if (!company) {
     return NextResponse.json(
       {
         error: {
@@ -99,16 +63,42 @@ export async function DELETE(
     );
   }
 
-  // Cascade delete: remove associated records
-  for (let i = applications.length - 1; i >= 0; i--) {
-    if (applications[i].companyId === id) applications.splice(i, 1);
-  }
-  for (let i = contacts.length - 1; i >= 0; i--) {
-    if (contacts[i].companyId === id) contacts.splice(i, 1);
+  const updatedCompany = await prisma.company.update({
+    where: { id },
+    data: {
+      ...body,
+      id: company.id,
+      createdAt: company.createdAt,
+    },
+  });
+
+  return NextResponse.json({ data: updatedCompany }, { status: 200 });
+}
+
+// DELETE /api/companies/:id
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const company = await prisma.company.findUnique({ where: { id } });
+  // Validate: company exists
+  if (!company) {
+    return NextResponse.json(
+      {
+        error: {
+          message: `Company with id: ${id} was not found`,
+          code: "NOT_FOUND",
+          status: 404,
+        },
+      },
+      { status: 404 },
+    );
   }
 
-  // Remove the company
-  companies.splice(index, 1);
+  await prisma.company.delete({
+    where: { id },
+  });
 
   // 204 No Content — successful deletion, no body
   return new NextResponse(null, { status: 204 });

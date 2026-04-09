@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { companies, contacts } from "@/lib/memory";
+import { prisma } from "@/lib/prisma";
 
 // POST /api/companies/:id/contacts
 export async function POST(
@@ -8,20 +8,6 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await request.json();
-
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
-    return NextResponse.json(
-      {
-        error: {
-          message: `Company with id: ${id} was not found`,
-          code: "NOT_FOUND",
-          status: 404,
-        },
-      },
-      { status: 404 },
-    );
-  }
 
   if (!body.name) {
     return NextResponse.json(
@@ -36,30 +22,8 @@ export async function POST(
     );
   }
 
-  const company = companies[index];
-
-  const newContact = {
-    ...body,
-    id: crypto.randomUUID(),
-    companyId: company.id,
-    connectionType: body.connectionType || "recruiter",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  contacts.push(newContact);
-  return NextResponse.json({ data: newContact }, { status: 201 });
-}
-
-// GET /api/companies/:id/contacts
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
+  const company = await prisma.company.findUnique({ where: { id } });
+  if (!company) {
     return NextResponse.json(
       {
         error: {
@@ -72,7 +36,57 @@ export async function GET(
     );
   }
 
-  const companyContacts = contacts.filter((c) => c.companyId === id);
+  // TODO: replace with authenticated user id when auth is implemented
+  const testUser = await prisma.user.upsert({
+    where: { email: "test@test.com" },
+    update: {},
+    create: {
+      email: "test@test.com",
+      passwordHash: "test-hash",
+    },
+  });
 
-  return NextResponse.json({ data: companyContacts }, { status: 200 });
+  const contact = await prisma.contact.create({
+    data: {
+      name: body.name,
+      companyId: id,
+      userId: testUser.id,
+      role: body.role,
+      email: body.email,
+      linkedinUrl: body.linkedinUrl,
+      connectionType: body.connectionType ?? "recruiter",
+      notes: body.notes,
+      followUpDate: body.followUpDate,
+    },
+  });
+
+  return NextResponse.json({ data: contact }, { status: 201 });
+}
+
+// GET /api/companies/:id/contacts
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  const company = await prisma.company.findUnique({ where: { id } });
+  if (!company) {
+    return NextResponse.json(
+      {
+        error: {
+          message: `Company with id: ${id} was not found`,
+          code: "NOT_FOUND",
+          status: 404,
+        },
+      },
+      { status: 404 },
+    );
+  }
+
+  const contacts = await prisma.contact.findMany({
+    where: { companyId: id },
+  });
+
+  return NextResponse.json({ data: contacts }, { status: 200 });
 }
