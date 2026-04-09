@@ -1,11 +1,12 @@
-// app/api/users/route.ts
-// import { NextRequest, NextResponse } from 'next/server';
-
 import { NextRequest, NextResponse } from "next/server";
-import { companies } from "@/lib/memory";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/companies
-export async function GET(request: NextRequest) {
+export async function GET() {
+  const companies = await prisma.company.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
   return NextResponse.json({ data: companies }, { status: 200 });
 }
 
@@ -26,13 +27,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const newCompany = {
-    ...body,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  // Create test user
+  const testUser = await prisma.user.upsert({
+    where: { email: "test@test.com" },
+    update: {},
+    create: {
+      email: "test@test.com",
+      passwordHash: "test-hash",
+    },
+  });
 
-  companies.push(newCompany);
-  return NextResponse.json({ data: newCompany }, { status: 201 });
+  const company = await prisma.company.create({
+    data: {
+      name: body.name,
+      location: body.location,
+      industry: body.industry,
+      websiteUrl: body.websiteUrl,
+      userId: testUser.id,
+    },
+  });
+  return NextResponse.json({ data: company }, { status: 201 });
 }

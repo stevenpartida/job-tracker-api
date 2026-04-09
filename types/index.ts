@@ -47,8 +47,6 @@ export type Application = {
   techStack?: string[];
   workModel: ApplicationWorkModel;
   status: ApplicationStatus;
-  dateFound?: string;
-  dateApplied?: string;
   salaryMin?: number;
   salaryMax?: number;
   priority: ApplicationPriority;
@@ -64,8 +62,6 @@ export type CreateApplicationInput = {
   techStack?: string[];
   workModel?: ApplicationWorkModel;
   status?: ApplicationStatus;
-  dateFound?: string;
-  dateApplied?: string;
   salaryMin?: number;
   salaryMax?: number;
   priority?: ApplicationPriority;

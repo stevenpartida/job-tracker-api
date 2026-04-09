@@ -1,24 +1,47 @@
-import { applications } from "@/lib/memory";
-import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const byStatus: Record<string, number> = {};
-  const byPriority: Record<string, number> = {};
-  let withReferrals = 0;
+//GET /api/appilcations/stats
+export async function GET() {
+  // Total applications count
+  const totalApplications = await prisma.application.count();
 
-  for (const app of applications) {
-    byStatus[app.status] = (byStatus[app.status] || 0) + 1;
-    byPriority[app.priority] = (byPriority[app.priority] || 0) + 1;
+  // Group by status
+  const statusGroup = await prisma.application.groupBy({
+    by: ["status"],
+    _count: { status: true },
+  });
 
-    if (app.referralContactId) {
-      withReferrals++;
-    }
-  }
+  // Transform array into {applied: 3, not_applied: 5} shape
+  const byStatus = statusGroup.reduce(
+    (acc, group) => {
+      acc[group.status] = group._count.status;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  const priorityGroup = await prisma.application.groupBy({
+    by: ["priority"],
+    _count: { priority: true },
+  });
+
+  const byPriority = priorityGroup.reduce(
+    (acc, group) => {
+      acc[group.priority] = group._count.priority;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  const withReferrals = await prisma.application.count({
+    where: { referralContactId: { not: null } },
+  });
 
   return NextResponse.json(
     {
       data: {
-        totalApplications: applications.length,
+        totalApplications,
         byStatus,
         byPriority,
         withReferrals,

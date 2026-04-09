@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { companies, applications } from "@/lib/memory";
+import { prisma } from "@/lib/prisma";
 
 // POST /api/companies/:id/applications
 export async function POST(
@@ -8,20 +8,6 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await request.json();
-
-  const index = companies.findIndex((c) => c.id === id);
-  if (index === -1) {
-    return NextResponse.json(
-      {
-        error: {
-          message: `Company with id: ${id} was not found`,
-          code: "NOT_FOUND",
-          status: 404,
-        },
-      },
-      { status: 404 },
-    );
-  }
 
   if (!body.roleTitle) {
     return NextResponse.json(
@@ -36,19 +22,46 @@ export async function POST(
     );
   }
 
-  const company = companies[index];
+  const company = await prisma.company.findUnique({ where: { id } });
+  if (!company) {
+    return NextResponse.json(
+      {
+        error: {
+          message: `Company with id: ${id} was not found`,
+          code: "NOT_FOUND",
+          status: 404,
+        },
+      },
+      { status: 404 },
+    );
+  }
 
-  const newApplication = {
-    ...body,
-    id: crypto.randomUUID(),
-    companyId: company.id,
-    priority: body.priority || "medium",
-    status: body.status || "not_applied",
-    workModel: body.workModel || "on_site",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  //TODO: replace w/ auathenticated user id
+  const testUser = await prisma.user.upsert({
+    where: { email: "test@test.com" },
+    update: {},
+    create: {
+      email: "test@test.com",
+      passwordHash: "test-hash",
+    },
+  });
 
-  applications.push(newApplication);
-  return NextResponse.json({ data: newApplication }, { status: 201 });
+  const application = await prisma.application.create({
+    data: {
+      roleTitle: body.roleTitle,
+      companyId: id,
+      userId: testUser.id,
+      status: body.status ?? "not_applied",
+      priority: body.priority ?? "medium",
+      workModel: body.workModel ?? "on_site",
+      jobUrl: body.jobUrl,
+      techStack: body.techStack ?? [],
+      salaryMin: body.salaryMin,
+      salaryMax: body.salaryMax,
+      referralContactId: body.referralContactId,
+      notes: body.notes,
+    },
+  });
+
+  return NextResponse.json({ data: application }, { status: 201 });
 }
